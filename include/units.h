@@ -83,25 +83,37 @@
 #if !defined(UNIT_LIB_DISABLE_IOSTREAM)
 	#include <iostream>
 	#include <string>
-#endif
+	#include <locale>
 
-//------------------------------
-//	STRING FORMATTER
-//------------------------------
+	//------------------------------
+	//	STRING FORMATTER
+	//------------------------------
+
+	namespace units
+	{
+		namespace detail
+		{
+			template <typename T> std::string to_string(const T& t)
+			{
+				std::string str{ std::to_string(t) };
+				int offset{ 1 };
+
+				// remove trailing decimal points for integer value units. Locale aware!
+				struct lconv * lc;
+				lc = localeconv();
+				char decimalPoint = *lc->decimal_point;
+				if (str.find_last_not_of('0') == str.find(decimalPoint)) { offset = 0; }
+				str.erase(str.find_last_not_of('0') + offset, std::string::npos);
+				return str;
+			}
+		}
+	}
+#endif
 
 namespace units
 {
-	namespace detail
-	{
-		template <typename T> std::string to_string(const T& t)
-		{
-			std::string str{ std::to_string(t) };
-			int offset{ 1 };
-			if (str.find_last_not_of('0') == str.find('.')) { offset = 0; }
-			str.erase(str.find_last_not_of('0') + offset, std::string::npos);
-			return str;
-		}
-	}
+	template<typename T> inline constexpr const char* name(const T&);
+	template<typename T> inline constexpr const char* abbreviation(const T&);
 }
 
 //------------------------------
@@ -142,7 +154,7 @@ namespace units
 #define UNIT_ADD_UNIT_DEFINITION(namespaceName,nameSingular)\
 	namespace namespaceName\
 	{\
-	/** @name Unit Containers */ /** @{ */ typedef unit_t<nameSingular> nameSingular ## _t; /** @} */\
+		/** @name Unit Containers */ /** @{ */ typedef unit_t<nameSingular> nameSingular ## _t; /** @} */\
 	}
 
 /**
@@ -182,12 +194,28 @@ namespace units
 		{\
 			return units::detail::to_string(obj()) + std::string(" "#abbrev);\
 		}\
-		inline constexpr const char* abbreviation(const nameSingular ## _t&)\
-		{\
-			return #abbrev;\
-		}\
 	}
 #endif
+
+ /**
+  * @def		UNIT_ADD_NAME(namespaceName,nameSingular,abbreviation)
+  * @brief		Macro for generating constexpr names/abbreviations for units.
+  * @details	The macro generates names for units. E.g. name() of 1_m would be "meter", and 
+  *				abbreviation would be "m".
+  * @param		namespaceName namespace in which the new units will be encapsulated. All literal values
+  *				are placed in the `units::literals` namespace.
+  * @param		nameSingular singular version of the unit name, e.g. 'meter'
+  * @param		abbreviation - abbreviated unit name, e.g. 'm'
+  */
+#define UNIT_ADD_NAME(namespaceName, nameSingular, abbrev)\
+template<> inline constexpr const char* name(const namespaceName::nameSingular ## _t&)\
+{\
+	return #nameSingular;\
+}\
+template<> inline constexpr const char* abbreviation(const namespaceName::nameSingular ## _t&)\
+{\
+	return #abbrev;\
+}
 
 /**
  * @def			UNIT_ADD_LITERALS(namespaceName,nameSingular,abbreviation)
@@ -239,6 +267,7 @@ namespace units
 #define UNIT_ADD(namespaceName, nameSingular, namePlural, abbreviation, /*definition*/...)\
 	UNIT_ADD_UNIT_TAGS(namespaceName,nameSingular, namePlural, abbreviation, __VA_ARGS__)\
 	UNIT_ADD_UNIT_DEFINITION(namespaceName,nameSingular)\
+	UNIT_ADD_NAME(namespaceName,nameSingular, abbreviation)\
 	UNIT_ADD_IO(namespaceName,nameSingular, abbreviation)\
 	UNIT_ADD_LITERALS(namespaceName,nameSingular, abbreviation)
 
@@ -2112,6 +2141,22 @@ namespace units
 			return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double, std::nano>(units::convert<Units, unit<std::ratio<1,1000000000>, category::time_unit>>((*this)())));
 		}
 
+		/**
+		 * @brief		returns the unit name
+		 */
+		inline constexpr const char* name() const noexcept
+		{
+			return units::name(*this);
+		}
+
+		/**
+		 * @brief		returns the unit abbreviation
+		 */
+		inline constexpr const char* abbreviation() const noexcept
+		{
+			return units::abbreviation(*this);
+		}
+
 	public:
 
 		template<class U, typename Ty, template<typename> class Nlt>
@@ -2196,12 +2241,6 @@ namespace units
 	}
 #endif
 
-	template<class Units, typename T, template<typename> class NonLinearScale>
-	constexpr unit_t<Units, T, NonLinearScale> operator-(const unit_t<Units, T, NonLinearScale>& val) noexcept
-	{
-		return unit_t<Units, T, NonLinearScale>(-val());
-	}
-
 	template<class Units, typename T, template<typename> class NonLinearScale, typename RhsType>
 	inline unit_t<Units, T, NonLinearScale>& operator+=(unit_t<Units, T, NonLinearScale>& lhs, const RhsType& rhs) noexcept
 	{
@@ -2242,6 +2281,58 @@ namespace units
 
 		lhs = lhs / rhs;
 		return lhs;
+	}
+
+	//------------------------------
+	//	UNIT_T UNARY OPERATORS
+	//------------------------------
+
+	// unary addition: +T
+	template<class Units, typename T, template<typename> class NonLinearScale>
+	inline unit_t<Units, T, NonLinearScale> operator+(const unit_t<Units, T, NonLinearScale>& u) noexcept
+	{
+		return u;
+	}
+
+	// prefix increment: ++T
+	template<class Units, typename T, template<typename> class NonLinearScale>
+	inline unit_t<Units, T, NonLinearScale>& operator++(unit_t<Units, T, NonLinearScale>& u) noexcept
+	{
+		u = unit_t<Units, T, NonLinearScale>(u() + 1);
+		return u;
+	}
+
+	// postfix increment: T++
+	template<class Units, typename T, template<typename> class NonLinearScale>
+	inline unit_t<Units, T, NonLinearScale> operator++(unit_t<Units, T, NonLinearScale>& u, int) noexcept
+	{
+		auto ret = u;
+		u = unit_t<Units, T, NonLinearScale>(u() + 1);
+		return ret;
+	}
+
+	// unary addition: -T
+	template<class Units, typename T, template<typename> class NonLinearScale>
+	inline unit_t<Units, T, NonLinearScale> operator-(const unit_t<Units, T, NonLinearScale>& u) noexcept
+	{
+		return unit_t<Units, T, NonLinearScale>(-u());
+	}
+
+	// prefix increment: --T
+	template<class Units, typename T, template<typename> class NonLinearScale>
+	inline unit_t<Units, T, NonLinearScale>& operator--(unit_t<Units, T, NonLinearScale>& u) noexcept
+	{
+		u = unit_t<Units, T, NonLinearScale>(u() - 1);
+		return u;
+	}
+
+	// postfix increment: T--
+	template<class Units, typename T, template<typename> class NonLinearScale>
+	inline unit_t<Units, T, NonLinearScale> operator--(unit_t<Units, T, NonLinearScale>& u, int) noexcept
+	{
+		auto ret = u;
+		u = unit_t<Units, T, NonLinearScale>(u() - 1);
+		return ret;
 	}
 
 	//------------------------------
@@ -2393,7 +2484,7 @@ namespace units
 	//------------------------------
 
 	template<class UnitTypeLhs, class UnitTypeRhs, std::enable_if_t<!traits::is_same_scale<UnitTypeLhs, UnitTypeRhs>::value, int> = 0>
-	constexpr inline int operator+(const UnitTypeLhs& lhs, const UnitTypeRhs& rhs) noexcept
+	constexpr inline int operator+(const UnitTypeLhs& /* lhs */, const UnitTypeRhs& /* rhs */) noexcept
 	{
 		static_assert(traits::is_same_scale<UnitTypeLhs, UnitTypeRhs>::value, "Cannot add units with different linear/non-linear scales.");
 		return 0;
@@ -3568,6 +3659,7 @@ namespace units
 #if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_PRESSURE_UNITS)
 	UNIT_ADD_WITH_METRIC_PREFIXES(pressure, pascal, pascals, Pa, unit<std::ratio<1>, units::category::pressure_unit>)
 	UNIT_ADD(pressure, bar, bars, bar, unit<std::ratio<100>, kilo<pascals>>)
+	UNIT_ADD(pressure, mbar, mbars, mbar, unit<std::ratio<1>, milli<bar>>)
 	UNIT_ADD(pressure, atmosphere, atmospheres, atm, unit<std::ratio<101325>, pascals>)
 	UNIT_ADD(pressure, pounds_per_square_inch, pounds_per_square_inch, psi, compound_unit<force::pounds, inverse<squared<length::inch>>>)
 	UNIT_ADD(pressure, torr, torrs, torr, unit<std::ratio<1, 760>, atmospheres>)
@@ -4101,12 +4193,14 @@ namespace units
 		 * @param[in]	angle		angle to compute the cosine of
 		 * @returns		Returns the cosine of <i>angle</i>
 		 */
+#if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_ANGLE_UNITS)
 		template<class AngleUnit>
 		dimensionless::scalar_t cos(const AngleUnit angle) noexcept
 		{
 			static_assert(traits::is_angle_unit<AngleUnit>::value, "Type `AngleUnit` must be a unit of angle derived from `unit_t`.");
 			return dimensionless::scalar_t(std::cos(angle.template convert<angle::radian>()()));
 		}
+#endif
 
 		/**
 		 * @ingroup		UnitMath
@@ -4116,13 +4210,14 @@ namespace units
 		 * @param[in]	angle		angle to compute the since of
 		 * @returns		Returns the sine of <i>angle</i>
 		 */
+#if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_ANGLE_UNITS)
 		template<class AngleUnit>
 		dimensionless::scalar_t sin(const AngleUnit angle) noexcept
 		{
 			static_assert(traits::is_angle_unit<AngleUnit>::value, "Type `AngleUnit` must be a unit of angle derived from `unit_t`.");
 			return dimensionless::scalar_t(std::sin(angle.template convert<angle::radian>()()));
 		}
-
+#endif
 		/**
 		 * @ingroup		UnitMath
 		 * @brief		Compute tangent
@@ -4131,12 +4226,14 @@ namespace units
 		 * @param[in]	angle		angle to compute the tangent of
 		 * @returns		Returns the tangent of <i>angle</i>
 		 */
+#if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_ANGLE_UNITS)
 		template<class AngleUnit>
 		dimensionless::scalar_t tan(const AngleUnit angle) noexcept
 		{
 			static_assert(traits::is_angle_unit<AngleUnit>::value, "Type `AngleUnit` must be a unit of angle derived from `unit_t`.");
 			return dimensionless::scalar_t(std::tan(angle.template convert<angle::radian>()()));
 		}
+#endif
 
 		/**
 		 * @ingroup		UnitMath
@@ -4221,12 +4318,14 @@ namespace units
 		 * @param[in]	angle		angle to compute the hyperbolic cosine of
 		 * @returns		Returns the hyperbolic cosine of <i>angle</i>
 		 */
+#if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_ANGLE_UNITS)
 		template<class AngleUnit>
 		dimensionless::scalar_t cosh(const AngleUnit angle) noexcept
 		{
 			static_assert(traits::is_angle_unit<AngleUnit>::value, "Type `AngleUnit` must be a unit of angle derived from `unit_t`.");
 			return dimensionless::scalar_t(std::cosh(angle.template convert<angle::radian>()()));
 		}
+#endif
 
 		/**
 		* @ingroup		UnitMath
@@ -4236,12 +4335,14 @@ namespace units
 		* @param[in]	angle		angle to compute the hyperbolic sine of
 		* @returns		Returns the hyperbolic sine of <i>angle</i>
 		*/
+#if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_ANGLE_UNITS)
 		template<class AngleUnit>
 		dimensionless::scalar_t sinh(const AngleUnit angle) noexcept
 		{
 			static_assert(traits::is_angle_unit<AngleUnit>::value, "Type `AngleUnit` must be a unit of angle derived from `unit_t`.");
 			return dimensionless::scalar_t(std::sinh(angle.template convert<angle::radian>()()));
 		}
+#endif
 
 		/**
 		* @ingroup		UnitMath
@@ -4251,12 +4352,14 @@ namespace units
 		* @param[in]	angle		angle to compute the hyperbolic tangent of
 		* @returns		Returns the hyperbolic tangent of <i>angle</i>
 		*/
+#if !defined(DISABLE_PREDEFINED_UNITS) || defined(ENABLE_PREDEFINED_ANGLE_UNITS)
 		template<class AngleUnit>
 		dimensionless::scalar_t tanh(const AngleUnit angle) noexcept
 		{
 			static_assert(traits::is_angle_unit<AngleUnit>::value, "Type `AngleUnit` must be a unit of angle derived from `unit_t`.");
 			return dimensionless::scalar_t(std::tanh(angle.template convert<angle::radian>()()));
 		}
+#endif
 
 		/**
 		 * @ingroup		UnitMath

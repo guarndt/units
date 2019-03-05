@@ -2,23 +2,36 @@
 # UNITS 
 A compile-time, header-only, dimensional analysis library built on c++14 with no dependencies.
 
-[![Linux build](https://travis-ci.org/nholthaus/units.svg?branch=master)](https://travis-ci.org/nholthaus/units) [![Windows build](https://ci.appveyor.com/api/projects/status/github/nholthaus/units?svg=true&branch=master)](https://ci.appveyor.com/project/nholthaus/units) [![Coverage Status](https://coveralls.io/repos/github/nholthaus/units/badge.svg?branch=master)](https://coveralls.io/github/nholthaus/units?branch=master) ![license](https://img.shields.io/badge/license-MIT-orange.svg) ![copyright](https://img.shields.io/badge/%C2%A9-Nic_Holthaus-orange.svg) ![language](https://img.shields.io/badge/language-c++-blue.svg) ![c++](https://img.shields.io/badge/std-c++14-blue.svg)<br>![msvc2013](https://img.shields.io/badge/MSVC-2013-ff69b4.svg) ![msvc2015](https://img.shields.io/badge/MSVC-2015-ff69b4.svg) ![msvc2017](https://img.shields.io/badge/MSVC-2017-ff69b4.svg) ![gcc-4.9.3](https://img.shields.io/badge/GCC-4.9.3-ff69b4.svg) ![gcc-5.4.0](https://img.shields.io/badge/GCC-5.4.0-ff69b4.svg) ![clang-3.4](https://img.shields.io/badge/CLANG-3.4-ff69b4.svg)
+[![Linux build](https://travis-ci.org/nholthaus/units.svg?branch=master)](https://travis-ci.org/nholthaus/units) [![Windows build](https://ci.appveyor.com/api/projects/status/github/nholthaus/units?svg=true&branch=master)](https://ci.appveyor.com/project/nholthaus/units) [![Coverage Status](https://coveralls.io/repos/github/nholthaus/units/badge.svg?branch=master)](https://coveralls.io/github/nholthaus/units?branch=master) ![license](https://img.shields.io/badge/license-MIT-orange.svg) ![copyright](https://img.shields.io/badge/%C2%A9-Nic_Holthaus-orange.svg) ![language](https://img.shields.io/badge/language-c++-blue.svg) ![c++](https://img.shields.io/badge/std-c++14-blue.svg)<br>![msvc2015](https://img.shields.io/badge/MSVC-2015-ff69b4.svg) ![msvc2017](https://img.shields.io/badge/MSVC-2017-ff69b4.svg) ![gcc-4.9.3](https://img.shields.io/badge/GCC-4.9.3-ff69b4.svg) ![gcc-5.4.0](https://img.shields.io/badge/GCC-5.4.0-ff69b4.svg) ![clang-3.4](https://img.shields.io/badge/CLANG-3.4-ff69b4.svg)
 
 # Get in touch
 
 If you are using `units.h` in production code, I'd love to hear from you via GitHub issues!
 
-# Latest Release - v2.3.0
+# Latest Release - v2.3.1
 
 ## Get it
-[![DOWNLOAD](https://img.shields.io/badge/Download-v2.3.0-green.svg)](https://github.com/nholthaus/units/releases/tag/v2.3.0)
+[![DOWNLOAD](https://img.shields.io/badge/Download-v2.3.1-green.svg)](https://github.com/nholthaus/units/releases/tag/v2.3.1)
 
-## New features in v2.3.0
+## New in v2.3.1
 
-features:
+**This version removes support for the Visual Studio 2013 compiler.**
+
+Features:
+- units now include constexpr `name()` and `abbreviation()` member functions, which do not really on string/iostream.
+- Builds with VS2017 Ninja generator out of the box
+- string conversions are now locale aware
+- added unary increment and decrement operators (`++`,`--`), as well as unary `+` operator.
+
+Bug fixs:
+- fixed compilation error when iostream was disabled
+
+## New in v2.3.0
+
+Features:
 - 5x compile time improvement on MSVC.
 - 1.5x compile time improvement on GCC.
-- Even more dramatic reductions in compile time can be acheived if you opt-in to specific unit definitions instead of using all the library-defined types (which is the default value). Check out [Enabling a subset of units to improve compilation time](#enabling-a-subset-of-units-to-improve-compilation-time) for instructions.
+- Even more dramatic reductions in compile time can be achieved if you opt-in to specific unit definitions instead of using all the library-defined types (which is the default value). Check out [Enabling a subset of units to improve compilation time](#enabling-a-subset-of-units-to-improve-compilation-time) for instructions.
 - Adds std::cout support for units with no defined abbreviation (they show up as a combination of SI base units)
 - Support for `std::numeric_limits` of unit types.
 - Assignment operators for unit types: `-=`, `+=`, `/=`, `*=`.
@@ -48,17 +61,16 @@ features:
   find_package(units)
   ```
 Bug fixes:
-- Fixed singualr name of `siemen` to be `siemens` (Thanks @Oxyd)
+- Fixed singular name of `siemen` to be `siemens` (Thanks @Oxyd)
 - Fixed bug with `cubrt` operation (Thanks @PearCoding)
-- fixed constexpr relational operators bug
-- fixed exponential temperature conversions (Thanks @guarndt)
+- Fixed constexpr relational operators bug
+- Fixed exponential temperature conversions (Thanks @guarndt)
  
 ## Tested on
 
  - gcc-4.9.3
  - gcc-5.4.0
  - clang-3.4
- - msvc2013
  - msvc2015
  - msvc2017
 
@@ -70,9 +82,10 @@ Does this library work on your compiler? If so, let me know!
 
 - [UNITS](#units)
 - [Get in touch](#get-in-touch)
-- [Latest Release - v2.3.0](#latest-release---v230)
+- [Latest Release - v2.3.1](#latest-release---v231)
 	- [Get it](#get-it)
-	- [New feares in v2.3.0](#new-feautres-in-v230)
+	- [New in v2.3.1](#new-in-v231)
+	- [New in v2.3.0](#new-in-v230)
 	- [Tested on](#tested-on)
 - [Contents](#contents)
 - [Documentation](#documentation)
@@ -221,7 +234,7 @@ Units are defined in terms of
  3. [optionally] a scale factor of `pi`
  4. [optionally] a datum translation (such as the +/- 32 required to convert between `fahrenheit` and `celsius`)
 
- All units have their origin in the Scientific International (SI) base unit system. A special exception is made for angle units, which are defined in SI as ( m * m^-1), and in this library they are treated as a basic unit type because of their important engineering applications.
+ All units have their origin in the Système International (SI) base unit system. A special exception is made for angle units, which are defined in SI as ( m * m^-1), and in this library they are treated as a basic unit type because of their important engineering applications.
  
 _Example_: the definitions of some common length units are:
 
@@ -390,7 +403,7 @@ To determine the underlying type of the unit container, the (verbose) trait `uni
 
 # Efficiency
 
-Complex, recurively-defined conversions are performed in just 5 instructions:
+Complex, recursively-defined conversions are performed in just 5 instructions:
 
 		year_t twoYears(2.0);
 		week_t twoYearsInWeeks = twoYears;
@@ -697,6 +710,15 @@ However, if you are already using CMake as your build system, the recommended wa
    add_executable(${PROJECT_NAME} main.cpp)
    target_link_libraries(${PROJECT_NAME} units)
    ```
+
+Also, if you are distributing headers that depends on units.h, you shoud consider using cmake's `find_package` to check if the header is installed on the user's system:
+    
+    ```cmake
+    find_package(units)
+    
+    add_library(${PROJECT_NAME} my_lib.cpp)
+    target_link_libraries(${PROJECT_NAME} units::units)
+    ```
 
 The include path properties are part of the `units` target, so adding it as a subdirectory and linking against it is all you need to do, no need to worry about additional include directories.
 

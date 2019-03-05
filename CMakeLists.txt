@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
 PROJECT(units LANGUAGES CXX)
+set(units_VERSION 2.3.1)
 
 # cmake options
 OPTION(BUILD_TESTS "Build unit tests" ON)
@@ -79,7 +80,7 @@ endif(DISABLE_IOSTREAM)
 # unit tests
 if(BUILD_TESTS)
 	set(VERSION_GTEST "1.8.0" CACHE STRING "Google Test framework version")
-	enable_testing ()
+	enable_testing()
 	add_subdirectory(3rdParty/gtest)
 	add_subdirectory(unitTests)
 endif(BUILD_TESTS)
@@ -205,14 +206,27 @@ if(BUILD_DOCS)
 	endif(DOXYGEN_FOUND)
 endif(BUILD_DOCS)
 
-install(TARGETS units
-  EXPORT unitsConfig
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/unitsConfigVersion.cmake"
+  VERSION ${units_VERSION}
+  COMPATIBILITY SameMajorVersion
 )
 
-install(DIRECTORY include/
-  DESTINATION include
+install(TARGETS units
+    EXPORT unitsConfig
 )
 
 install(EXPORT unitsConfig
-  DESTINATION cmake
+    NAMESPACE units::
+    DESTINATION share/units/cmake
+)
+
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/unitsConfigVersion.cmake"
+    DESTINATION share/units/cmake
+)
+
+install(DIRECTORY include/
+    DESTINATION include
 )
