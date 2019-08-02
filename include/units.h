@@ -2313,7 +2313,7 @@ namespace units
 
 	// unary addition: -T
 	template<class Units, typename T, template<typename> class NonLinearScale>
-	inline unit_t<Units, T, NonLinearScale> operator-(const unit_t<Units, T, NonLinearScale>& u) noexcept
+	constexpr inline unit_t<Units, T, NonLinearScale> operator-(const unit_t<Units, T, NonLinearScale>& u) noexcept
 	{
 		return unit_t<Units, T, NonLinearScale>(-u());
 	}
@@ -4445,6 +4445,7 @@ namespace units
 		 * @returns		Natural logarithm of x.
 		 */
 		template<class ScalarUnit>
+		constexpr
 		dimensionless::scalar_t log(const ScalarUnit x) noexcept
 		{
 			static_assert(traits::is_dimensionless_unit<ScalarUnit>::value, "Type `ScalarUnit` must be a dimensionless unit derived from `unit_t`.");
