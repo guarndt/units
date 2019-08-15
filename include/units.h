@@ -151,10 +151,11 @@ namespace units
  * @param		namespaceName namespace in which the new units will be encapsulated.
  * @param		nameSingular singular version of the unit name, e.g. 'meter'
  */
-#define UNIT_ADD_UNIT_DEFINITION(namespaceName,nameSingular)\
+#define UNIT_ADD_UNIT_DEFINITION(namespaceName,nameSingular, namePlural)\
 	namespace namespaceName\
 	{\
-		/** @name Unit Containers */ /** @{ */ typedef unit_t<nameSingular> nameSingular ## _t; /** @} */\
+		/** @name Unit Containers (full names singular) */ /** @{ */ typedef unit_t<nameSingular> nameSingular ## _t; /** @} */\
+		/** @name Unit Containers (full names plural)  */ /** @{ */ typedef nameSingular ## _t namePlural ## _t; /** @} */\
 	}
 
 /**
@@ -266,7 +267,7 @@ template<> inline constexpr const char* abbreviation(const namespaceName::nameSi
  */
 #define UNIT_ADD(namespaceName, nameSingular, namePlural, abbreviation, /*definition*/...)\
 	UNIT_ADD_UNIT_TAGS(namespaceName,nameSingular, namePlural, abbreviation, __VA_ARGS__)\
-	UNIT_ADD_UNIT_DEFINITION(namespaceName,nameSingular)\
+	UNIT_ADD_UNIT_DEFINITION(namespaceName,nameSingular, namePlural)\
 	UNIT_ADD_NAME(namespaceName,nameSingular, abbreviation)\
 	UNIT_ADD_IO(namespaceName,nameSingular, abbreviation)\
 	UNIT_ADD_LITERALS(namespaceName,nameSingular, abbreviation)
